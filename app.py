@@ -204,6 +204,23 @@ def load_resources():
         knn_model = joblib.load(f)
     with gzip.open("weights/svm.pkl.gz", "rb") as f:
         svm_model = joblib.load(f)
+    # Load neural network (MLP) model
+    import torch
+    class SimpleMLP(torch.nn.Module):
+        def __init__(self, input_dim, hidden_dim=100, output_dim=3):
+            super().__init__()
+            self.fc1 = torch.nn.Linear(input_dim, hidden_dim)
+            self.relu = torch.nn.ReLU()
+            self.fc2 = torch.nn.Linear(hidden_dim, output_dim)
+        def forward(self, x):
+            x = self.fc1(x)
+            x = self.relu(x)
+            x = self.fc2(x)
+            return x
+    input_dim = 10000
+    nn_model = SimpleMLP(input_dim, hidden_dim=100)
+    nn_model.load_state_dict(torch.load('weights/binary_mlp.pt', map_location='cpu'))
+    nn_model.eval()
     # LSTM model
     model = Sequential()
     model.add(Embedding(input_dim=10000, output_dim=256, input_length=24))
@@ -229,6 +246,7 @@ def load_resources():
         'knn_model': knn_model,
         'svm_model': svm_model,
         'lstm_model': lstm_model,
+        'nn_model': nn_model,
         'token': token
     }
 def transform_label(num):
@@ -243,6 +261,7 @@ def transform_label(num):
 def inference(model_key, text, resources):
     tfidf_vec = resources['tfidf_vec']
     bog_vec = resources['bog_vec']
+    binary_vec = resources['binary_vec']
     token = resources['token']
     if model_key == 'knn':
         x_predict = tfidf_vec.transform([text]).toarray()
@@ -265,8 +284,16 @@ def inference(model_key, text, resources):
         predictions = resources['lstm_model'].predict(new_reviews_padded, verbose=0)
         predicted_classes = np.argmax(predictions, axis=1)
         sentiment = transform_label(predicted_classes[0])
+    elif model_key == 'nn':
+        import torch
+        x_predict = binary_vec.transform([text]).toarray()
+        x_tensor = torch.tensor(x_predict, dtype=torch.float32)
+        with torch.no_grad():
+            output = resources['nn_model'](x_tensor)
+            pred = torch.argmax(output, dim=1).item()
+        sentiment = transform_label(pred)
     else:
-        sentiment = 'unknown'
+        raise ValueError(f"Model {model_key} không hợp lệ.")
     return sentiment
 def contains_vietnamese(text):
     # Regex kiểm tra ký tự tiếng Việt có dấu
@@ -294,7 +321,8 @@ model_options = {
     'Logistic Regression': 'logistic_regression',
     'K-Nearest Neighbors': 'knn',
     'SVM': 'svm',
-    'LSTM': 'lstm'
+    'LSTM': 'lstm',
+    'Neural Network': 'nn'
 }
 
 # Label và selectbox cho mô hình
