@@ -15,6 +15,8 @@ from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 import string
 
+st.set_page_config(page_title="Comment Sentiment Analysis", page_icon="💬")
+
 nltk.download('punkt')
 nltk.download('stopwords')
 nltk.download('wordnet')
