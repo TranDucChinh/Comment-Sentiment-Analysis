@@ -9,6 +9,15 @@ from tensorflow.keras.layers import Embedding, Dropout, Dense, LSTM
 from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 import re
+import nltk
+from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
+import string
+
+nltk.download('punkt')
+nltk.download('stopwords')
+nltk.download('wordnet')
 
 # Inject custom CSS for modern, creative look
 st.markdown('''
@@ -259,6 +268,9 @@ def transform_label(num):
     else:
         raise ValueError(f"Invalid label: {num}. Chỉ chấp nhận 0, 1, 2.")
 def inference(model_key, text, resources):
+    text = word_process(text)
+    text = remove_stopwords(text)
+    text = lemmatize_text(text)
     tfidf_vec = resources['tfidf_vec']
     bog_vec = resources['bog_vec']
     binary_vec = resources['binary_vec']
@@ -298,7 +310,27 @@ def inference(model_key, text, resources):
 def contains_vietnamese(text):
     # Regex kiểm tra ký tự tiếng Việt có dấu
     return bool(re.search(r'[ăâđêôơưáàảãạấầẩẫậắằẳẵặéèẻẽẹếềểễệíìỉĩịóòỏõọốồổỗộớờởỡợúùủũụứừửữựýỳỷỹỵ]', text, re.IGNORECASE))
+def word_process(text):
+    text = text.lower()
+    text = re.sub(r'\[.*?\]', '', text)  # Remove text in brackets
+    text = re.sub(r'https?://\S+|www\.\S+', '', text)  # Remove URLs
+    text = re.sub(r'\W', ' ', text)  # Remove non-word characters
+    text = re.sub(r'<.*?>+', '', text)  # Remove HTML tags
+    text = re.sub('[%s]' % re.escape(string.punctuation), '', text)  # Remove punctuation
+    text = re.sub(r'\n', '', text)  # Remove newline characters
+    text = re.sub(r'\w*\d\w*', '', text)  # Remove words containing numbers
+    return text
+def remove_stopwords(text):
+    stop_words = set(stopwords.words('english'))
+    tokens = word_tokenize(text)
+    filtered_text = [word for word in tokens if word not in stop_words]
+    return ' '.join(filtered_text)
 
+def lemmatize_text(text):
+    lemmatizer = WordNetLemmatizer()
+    tokens = word_tokenize(text)
+    lemmatized_text = [lemmatizer.lemmatize(word) for word in tokens]
+    return ' '.join(lemmatized_text)
 # Header
 st.markdown('<div class="main-header">🎉 Comment Sentiment Analysis 🎉</div>', unsafe_allow_html=True)
 st.markdown('<div class="sub-header">💡 Nhập một câu comment và chọn mô hình để phân tích cảm xúc. Hãy khám phá cảm xúc của bạn với giao diện trẻ trung và sáng tạo!</div>', unsafe_allow_html=True)
