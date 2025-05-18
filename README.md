@@ -12,4 +12,4 @@ pip install -r requirements.txt
 python -m streamlit run app.py --server.port 8052
 ```
 
-App sẽ chạy tại địa chỉ http://localhost:8501
+App sẽ chạy tại địa chỉ http://localhost:8502
